@@ -29,7 +29,7 @@ int main(int argc, char **argv)
     const IRET_TIME = 1;      // Time for IRET instruction
     const int VECTOR_ENTRY_BYTES = 2;
 
-    long long current_time = 0; // Current time in the simulation
+    long long time = 0; // Current time in the simulation
 
 
     // PLEASE DONT MIND THE WEIRD SPACES , THE FORMATTER I USE ADDS THEM AUTOMATICALLY
@@ -39,7 +39,7 @@ int main(int argc, char **argv)
         enum Type   
         {
             CPU,
-            END_IO,
+            IO,
             SYSCALL
         };
         Type type;
@@ -47,14 +47,14 @@ int main(int argc, char **argv)
     };
 
     // using lambda funciton to crea te a function inside main to convert trace type to event type
-    auto trace_convert = [](std::string type, int dur)
+    auto event_convert = [](std::string type, int dur)
     {
         event::Type t;
 
         if (type == "CPU")
             t = event::CPU;
-        else if (type == "END_IO")
-            t = event::END_IO;
+        else if (type == "IO")
+            t = event::IO;
         else if (type == "SYSCALL")
             t = event::SYSCALL;
         else
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     {
         execution += std::to_string(start) + " " + std::to_string(dur) + " " + desc + "\n";
     };
-    
+
     /******************************************************************/
 
     // parse each line of the input trace file
