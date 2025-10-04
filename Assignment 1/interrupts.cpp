@@ -92,27 +92,16 @@ int main(int argc, char **argv)
 
         else if (e.type == event::SYSCALL)
         {
-            // Switching to kernel mode
-            log_event(time, SWITCH_MODE, "Switch to kernel mode");
-            time += SWITCH_MODE;
+            // Using boilerplate for interrupt setup
+            auto [bp_log, new_time] = intr_boilerplate(time, 0, SAVE_CONTEXT, vectors);
+            execution += bp_log;
+            time = new_time;
 
-            // Saving context
-            log_event(time, SAVE_CONTEXT, "Save context");
-            time += SAVE_CONTEXT;
-
-            // Finding ISR vector address
-            log_event(time, FIND_VECTOR, "Find ISR vector");
-            time += FIND_VECTOR;
-
-            // Getting ISR address from the vector table
-            log_event(time, GET_ISR, "Get ISR address");
-            time += GET_ISR;
-
-            // Executing ISR
+            // ISR body
             log_event(time, e.dur, "Execute SYSCALL ISR body");
             time += e.dur;
 
-            // Restoring old context
+            // Restoring Context
             log_event(time, RESTORE_CONTEXT, "Restore context");
             time += RESTORE_CONTEXT;
 
@@ -126,21 +115,26 @@ int main(int argc, char **argv)
             int device_num = duration_intr; // GETTING DEVICE NUMBER FOR IO EVENT
             io_queue.push(device_num);      // STORING DEVICE NUMBER IN QUEUE
 
+            // Using boilerplate for interrupt setup
+            auto [bp_log, new_time] = intr_boilerplate(time, device_num, SAVE_CONTEXT, vectors);
+            execution += bp_log;
+            time = new_time;
+
             // Switching to kernel mode
-            log_event(time, SWITCH_MODE, "Switch to kernel mode");
-            time += SWITCH_MODE;
+            //log_event(time, SWITCH_MODE, "Switch to kernel mode");
+            //time += SWITCH_MODE;
 
             // Saving context
-            log_event(time, SAVE_CONTEXT, "Save context");
-            time += SAVE_CONTEXT;
+            //log_event(time, SAVE_CONTEXT, "Save context");
+            //time += SAVE_CONTEXT;
 
             // Finding ISR vector address
-            log_event(time, FIND_VECTOR, "Find ISR vector");
-            time += FIND_VECTOR;
+            //log_event(time, FIND_VECTOR, "Find ISR vector");
+            //time += FIND_VECTOR;
 
             // Getting ISR address from vector table
-            log_event(time, GET_ISR, "Get ISR address");
-            time += GET_ISR;
+            //log_event(time, GET_ISR, "Get ISR address");
+            //time += GET_ISR;
 
             // Executing ISR body
             // log_event(time, delays[device_num], std::string("Execute I/O ISR body ") + std::to_string(device_num));
@@ -162,7 +156,7 @@ int main(int argc, char **argv)
                 io_queue.pop();
 
                 log_event(time, delays[finished_device],
-                          std::string("Complete I/O ISR for device ") + std::to_string(finished_device));
+                std::string("Complete I/O ISR for device ") + std::to_string(finished_device));
                 time += delays[finished_device];
 
                 log_event(time, RESTORE_CONTEXT, "Restore context");
