@@ -11,6 +11,7 @@
 #include<iomanip>
 
 #include<stdio.h>
+#include <queue>
 
 #define ADDR_BASE   0
 #define VECTOR_SIZE 2
