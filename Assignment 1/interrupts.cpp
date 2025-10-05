@@ -31,15 +31,15 @@ int main(int argc, char **argv)
 
     long long time = 0; // Current time in the simulation
 
-    std::queue<int> io_queue; // CREATING QUEUE TO STORE IO DEVICES
+
     // PLEASE DONT MIND THE WEIRD SPACES , THE FORMATTER I USE ADDS THEM AUTOMATICALLY
+    
     // created an even struct to store event information
     struct event
     {
         enum Type
         {
             CPU,
-            IO,
             ENDIO,
             SYSCALL
         };
@@ -54,8 +54,6 @@ int main(int argc, char **argv)
 
         if (type == "CPU")
             t = event::CPU;
-        else if (type == "IO")
-            t = event::IO;
         else if (type == "SYSCALL")
             t = event::SYSCALL;
         else if (type == "END_IO")
@@ -110,65 +108,26 @@ int main(int argc, char **argv)
             time += IRET_TIME;
         }
 
-        else if (e.type == event::IO)
+        // Handling END_IO events
+        else if (e.type == event::ENDIO) 
         {
-            int device_num = duration_intr; // GETTING DEVICE NUMBER FOR IO EVENT
-            io_queue.push(device_num);      // STORING DEVICE NUMBER IN QUEUE
+        //StorIng the device number
+        int device_num = e.dur; 
 
-            // Using boilerplate for interrupt setup
-            auto [bp_log, new_time] = intr_boilerplate(time, device_num, SAVE_CONTEXT, vectors);
-            execution += bp_log;
-            time = new_time;
+        // Using boilerplate for END_IO setup    
+        auto [bp_log, new_time] = intr_boilerplate(time, device_num, SAVE_CONTEXT, vectors);
+        execution += bp_log;
+        time = new_time;
 
-            // Switching to kernel mode
-            //log_event(time, SWITCH_MODE, "Switch to kernel mode");
-            //time += SWITCH_MODE;
+        log_event(time, delays[device_num], 
+                  "Complete I/O ISR for device " + std::to_string(device_num));
+        time += delays[device_num];
 
-            // Saving context
-            //log_event(time, SAVE_CONTEXT, "Save context");
-            //time += SAVE_CONTEXT;
+        log_event(time, RESTORE_CONTEXT, "Restore context");
+        time += RESTORE_CONTEXT;
 
-            // Finding ISR vector address
-            //log_event(time, FIND_VECTOR, "Find ISR vector");
-            //time += FIND_VECTOR;
-
-            // Getting ISR address from vector table
-            //log_event(time, GET_ISR, "Get ISR address");
-            //time += GET_ISR;
-
-            // Executing ISR body
-            // log_event(time, delays[device_num], std::string("Execute I/O ISR body ") + std::to_string(device_num));
-            // time += delays[device_num];
-
-            // Restoring context
-            // log_event(time, RESTORE_CONTEXT, "Restore context");
-            // time += RESTORE_CONTEXT;
-
-            //  IRET
-            // log_event(time, IRET_TIME, "IRET");
-            // time += IRET_TIME;
-        }
-        else if (e.type == event::ENDIO) // Handling END_IO events
-        {
-            if (!io_queue.empty())
-            {
-                int finished_device = io_queue.front();
-                io_queue.pop();
-
-                log_event(time, delays[finished_device],
-                std::string("Complete I/O ISR for device ") + std::to_string(finished_device));
-                time += delays[finished_device];
-
-                log_event(time, RESTORE_CONTEXT, "Restore context");
-                time += RESTORE_CONTEXT;
-
-                log_event(time, IRET_TIME, "IRET");
-                time += IRET_TIME;
-            }
-            else
-            {
-                throw std::invalid_argument("Unknown event type");
-            }
+        log_event(time, IRET_TIME, "IRET");
+        time += IRET_TIME;
         }
         else
         {
