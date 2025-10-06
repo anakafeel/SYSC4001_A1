@@ -31,9 +31,8 @@ int main(int argc, char **argv)
 
     long long time = 0; // Current time in the simulation
 
-
     // PLEASE DONT MIND THE WEIRD SPACES , THE FORMATTER I USE ADDS THEM AUTOMATICALLY
-    
+
     // created an even struct to store event information
     struct event
     {
@@ -90,14 +89,21 @@ int main(int argc, char **argv)
 
         else if (e.type == event::SYSCALL)
         {
+            int syscall_num = e.dur; // SYSCALL INDEX FROM THE vector table
+
+            if (syscall_num < 0 || syscall_num >= (int)vectors.size())
+            {
+                throw std::out_of_range("Invalid SYSCALL number " + std::to_string(syscall_num));
+            }
+
             // Using boilerplate for interrupt setup
-            auto [bp_log, new_time] = intr_boilerplate(time, 0, SAVE_CONTEXT, vectors);
+            auto [bp_log, new_time] = intr_boilerplate(time, syscall_num, SAVE_CONTEXT, vectors);
             execution += bp_log;
             time = new_time;
 
-            // ISR body
-            log_event(time, e.dur, "Execute SYSCALL ISR body");
-            time += e.dur;
+            // ISR body (duration here should probably be fixed cost, not syscall_num)
+            log_event(time, GET_ISR, "Execute SYSCALL ISR body for vector " + std::to_string(syscall_num));
+            time += GET_ISR;
 
             // Restoring Context
             log_event(time, RESTORE_CONTEXT, "Restore context");
@@ -109,26 +115,33 @@ int main(int argc, char **argv)
         }
 
         // Handling END_IO events
-        else if (e.type == event::ENDIO) 
+        else if (e.type == event::ENDIO)
         {
-        //StorIng the device number
-        int device_num = e.dur; 
+            int device_num = e.dur;
 
-        // Using boilerplate for END_IO setup    
-        auto [bp_log, new_time] = intr_boilerplate(time, device_num, SAVE_CONTEXT, vectors);
-        execution += bp_log;
-        time = new_time;
+            // Skip invalid device numbers instead of aborting (OUT OF RANGE ISSUE AS DEVICE TABLE ONLY SUPPORTS DEVICES FROM 0-19)
+            if (device_num < 0 || device_num >= (int)delays.size())
+            {
+                log_event(time, 0, "Skipped invalid END_IO for device " + std::to_string(device_num));
+                continue;
+            }
 
-        log_event(time, delays[device_num], 
-                  "Complete I/O ISR for device " + std::to_string(device_num));
-        time += delays[device_num];
+            // Using boilerplate for END_IO setup
+            auto [bp_log, new_time] = intr_boilerplate(time, device_num, SAVE_CONTEXT, vectors);
+            execution += bp_log;
+            time = new_time;
 
-        log_event(time, RESTORE_CONTEXT, "Restore context");
-        time += RESTORE_CONTEXT;
+            log_event(time, delays[device_num],
+                      "Complete I/O ISR for device " + std::to_string(device_num));
+            time += delays[device_num];
 
-        log_event(time, IRET_TIME, "IRET");
-        time += IRET_TIME;
+            log_event(time, RESTORE_CONTEXT, "Restore context");
+            time += RESTORE_CONTEXT;
+
+            log_event(time, IRET_TIME, "IRET");
+            time += IRET_TIME;
         }
+
         else
         {
             throw std::invalid_argument("Unknown event type");
